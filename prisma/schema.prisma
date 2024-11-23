@@ -1,0 +1,119 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [citext(schema: "public"), pg_cron(schema: "extensions"), uuid_ossp(map: "uuid-ossp", schema: "extensions")]
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique @default("") @db.Citext
+  username           String    @unique @default("")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  bannedUntil        DateTime?
+  reasonForBan       String    @default("")
+  verified           Boolean   @default(false)
+  lastLogin          DateTime?
+  passwordLastUpdate DateTime?
+  bio                String    @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
+  meta               Json?
+  works              Work[]    @relation("UserWork")
+  comments           Comment[] @relation("AuthorComment")
+  reviews            Review[]  @relation("AuthorReview")
+  sentMessages       Message[] @relation("SentMessage")
+  receivedMessages   Message[] @relation("ReceivedMessage")
+  @@index([email, username, id])
+}
+
+model Work {
+  id        Int       @id @unique @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  title     String
+  cover     String // url string
+  synopsis  String?   @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
+  slug      String    @unique @default("") @db.Citext
+  stats     Json?
+  meta      Json?
+  author    User      @relation("UserWork", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId  String    @map("author")
+  chapters  Chapter[] @relation("WorkChapter")
+  comments  Comment[] @relation("WorkComment")
+  reviews   Review[]  @relation("WorkReview")
+  tags      Tag[]     @relation("WorkTag")
+  genre     Genre[]   @relation("WorkGenre")
+}
+
+model Chapter {
+  id        Int       @id @unique @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  title     String    @default("")
+  slug      String    @unique @default("") @db.Citext
+  content   String?   @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
+  revisions Int       @default(0)
+  order     Int
+  work      Work      @relation("WorkChapter", fields: [workId], references: [id], onDelete: Cascade)
+  workId    Int       @map("work")
+  comments  Comment[] @relation("ChapterComment")
+}
+
+model Comment {
+  id            Int       @id @unique @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  content       String?   @default("[{\"type\":\"paragraph\",\"children\":[{\"text\":\"\"}]}]")
+  author        User      @relation("AuthorComment", fields: [authorId], references: [id])
+  authorId      String    @map("author")
+  parent        Comment?  @relation("ParentComment", fields: [parentId], references: [id])
+  parentId      Int       @map("parent")
+  childComments Comment[] @relation("ParentComment")
+  work          Work?     @relation("WorkComment", fields: [workId], references: [id], onDelete: Cascade)
+  workId        Int?      @map("work")
+  chapter       Chapter?  @relation("ChapterComment", fields: [chapterId], references: [id], onDelete: Cascade)
+  chapterId     Int?      @map("chapter")
+}
+
+model Review {
+  id        Int      @id @unique @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation("AuthorReview", fields: [authorId], references: [id])
+  authorId  String   @map("author")
+  work      Work?    @relation("WorkReview", fields: [workId], references: [id], onDelete: Cascade)
+  workId    Int?     @map("work")
+}
+
+model Tag {
+  id     Int    @id @unique @default(autoincrement())
+  name   String @unique @db.Citext
+  Work   Work?  @relation("WorkTag", fields: [workId], references: [id])
+  workId Int?
+}
+
+model Genre {
+  id     Int    @id @unique @default(autoincrement())
+  name   String @unique @db.Citext
+  Work   Work?  @relation("WorkGenre", fields: [workId], references: [id])
+  workId Int?
+}
+
+model Message {
+  id            Int       @id @unique @default(autoincrement())
+  text          String
+  createdAt     DateTime  @default(now())
+  read          Boolean   @default(false)
+  meta          Json?
+  from          User      @relation("SentMessage", fields: [fromId], references: [id], onDelete: Cascade)
+  fromId        String    @map("from")
+  parent        Message?  @relation("ParentMessage", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId      Int       @map("parent")
+  childMessages Message[] @relation("ParentMessage")
+  to            User      @relation("ReceivedMessage", fields: [toId], references: [id], onDelete: Cascade)
+  toId          String    @map("to")
+}
