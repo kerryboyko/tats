@@ -16,17 +16,17 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
+            request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
-    },
+    }
   );
 
   // IMPORTANT: Avoid writing any logic between createServerClient and
@@ -36,7 +36,7 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
+  console.log("RUNNING")
   if (
     !user &&
     !request.nextUrl.pathname.startsWith("/login") &&
@@ -45,6 +45,16 @@ export async function updateSession(request: NextRequest) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    console.log("redirecting to login")
+    return NextResponse.redirect(url);
+  } else if (!!user && request.nextUrl.pathname.startsWith("/logout")) {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error(error);
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/goodbye";
+    console.log("Goodbye!")
     return NextResponse.redirect(url);
   }
 
