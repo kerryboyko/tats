@@ -36,18 +36,17 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  console.log("RUNNING")
+  const restrictedPathList = ["/private"];
   if (
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !user && restrictedPathList.includes(request.nextUrl.pathname)
   ) {
-    // no user, potentially respond by redirecting the user to the login page
+    // no user and on a restricted path list?
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     console.log("redirecting to login")
     return NextResponse.redirect(url);
-  } else if (!!user && request.nextUrl.pathname.startsWith("/logout")) {
+  } 
+  if (request.nextUrl.pathname.startsWith("/logout")) {
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.error(error);
