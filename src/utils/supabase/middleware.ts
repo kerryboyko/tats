@@ -36,16 +36,19 @@ export async function updateSession(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const restrictedPathList = ["/private"];
+  const restrictedPathList = ["/private", '/api/v1/secure'];
   if (
-    !user && restrictedPathList.includes(request.nextUrl.pathname)
+    !user &&
+    restrictedPathList.some((path: string) =>
+      request.nextUrl.pathname.startsWith(path)
+    )
   ) {
     // no user and on a restricted path list?
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    console.log("redirecting to login")
+    console.log("redirecting to login");
     return NextResponse.redirect(url);
-  } 
+  }
   if (request.nextUrl.pathname.startsWith("/logout")) {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -53,7 +56,7 @@ export async function updateSession(request: NextRequest) {
     }
     const url = request.nextUrl.clone();
     url.pathname = "/goodbye";
-    console.log("Goodbye!")
+    console.log("Goodbye!");
     return NextResponse.redirect(url);
   }
 
